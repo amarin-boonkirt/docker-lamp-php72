@@ -1,0 +1,61 @@
+version: '3'
+
+services:  
+  php-apache-stretch:    
+    build:
+        context: ./docker/php-apache-stretch
+        dockerfile: Dockerfile    
+        args:
+          - TZ=${TZ}
+          - LOCALE=${LOCALE} 
+          - WEB_UID=${WEB_UID}
+          - WEB_GID=${WEB_GID}    
+    env_file: [env.options]
+    working_dir: /var/www/html
+    volumes:      
+      - '${PROJECT_APP_DIR}:/var/www/rvsitebuildercms'
+      - '${PROJECT_WEB_DIR}:/var/www/html'
+      - './docker/php-apache-stretch/apache2/000-default.conf:/etc/apache2/sites-available/000-default.conf:ro'
+      - './docker/php-apache-stretch/php/php-ini-overrides.ini:/usr/local/etc/php/conf.d/99-overrides.ini:ro'
+    ports:
+      - '${WEBSERVER_PORT}:80'
+    links:
+      - mariadb
+    depends_on:
+      - mariadb      
+  mariadb:
+    image: 'mariadb:10.4'
+    env_file: [env.overrides]
+    #ports:
+    #  - "${MARIADB_PORT}:3306"
+    environment:
+      - TZ=${TZ}
+      - MYSQL_ROOT_HOST=%
+      - MYSQL_DATABASE=${MARIADB_DATABASE}
+      - MYSQL_USER=${MARIADB_USER}
+      - MYSQL_PASSWORD=${MARIADB_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD}
+    volumes:
+      - '/var/docker_persistent_storage/mysql:/var/lib/mysql'
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    env_file: [env.overrides]
+    links:
+      - mariadb
+    depends_on:
+      - mariadb  
+    environment:      
+      - PMA_HOST=mariadb      
+      - PMA_USER=${MARIADB_USER}
+      - PMA_PASSWORD=${MARIADB_PASSWORD}
+    ports:
+      - '${PHPMYADMIN_PORT}:80'
+    volumes:
+      - /sessions
+  mailhog:
+    image: 'mailhog/mailhog:latest'
+    env_file: [env.overrides]
+    ports:
+      - '${MAILHOG}:8025'
+      
+#https://docs.docker.com/compose/reference/envvars/      
